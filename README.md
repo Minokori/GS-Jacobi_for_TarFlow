@@ -1,10 +1,10 @@
 # Accelerate TarFlow Sampling with GS-Jacobi Iteration
-![GSJprocess_00](https://github.com/user-attachments/assets/3d0a40ad-f618-414b-92df-560abfbad478)
+![GSJprocess_00](https://github.com/user-attachments/assets/137e66de-ca14-4f21-947a-58fc57a8c27f)
 
 ## Transfomer AutoRegressive Flow Model
 The TarFlow model is proposed in [[Zhai et al., 2024]](http://arxiv.org/abs/2412.06329), associated code can be found at https://github.com/apple/ml-tarflow.
 It achieves state-of-the-art results across multiple benchmarks compared to previous normalizing-flow-based model such as Glow. Its sampling trace looks like this:
-![combined_trace](https://github.com/user-attachments/assets/0d2530f9-041e-487b-8ebc-f3425891f77d)
+![combined_trace](https://github.com/user-attachments/assets/dbde8b88-d7fd-4bac-b8a3-b6eb30ebb47c)
 From top to bottom: Img128cond, Img64cond (patch4), Img64uncond, AFHQ. From left to right: noise, Block 7-0, denoised image.
 
 The model parameters are not available in original paper, so we retrain TarFlow models and upload them. As metioned in [[Zhai et al., 2024]](http://arxiv.org/abs/2412.06329), a TarFlow model can be denoted as P-Ch-T-K-pε. The pretrained models used in experiments can be download through:
@@ -121,7 +121,7 @@ The best hyper-parameters `cfg` `self_denoisong_lr` `attn_temp` may vary among m
 |Rate|4.53|5.32|2.96|2.51|
 
 A visual comparation between the original "For" sampling and GS-Jacobi sampling in AFHQ model is:
-| ![afhq_ori](https://github.com/user-attachments/assets/426b5985-be82-43dc-92b9-751da0570f3d)| ![afhq_gsj](https://github.com/user-attachments/assets/a1280cd0-0a80-4659-8154-d93b37103d03)|
+| ![afhq_ori](https://github.com/user-attachments/assets/c4730870-c4ec-47be-925d-3dbbd0df855e)| ![afhq_gsj](https://github.com/user-attachments/assets/286c78b6-d804-4757-ab7d-99da9ea77854)|
 |:------------------:|:------------------:|
 |Original Sampling     | GS-Jacobi Sampling       |
 
@@ -135,7 +135,7 @@ python Sampling.py --dataset=afhq --cfg=2 \
   --guess_list=[0,0,0,0,0,1,1,0]
 ```
 The result is like:
-![AFHQ_trace](https://github.com/user-attachments/assets/c4058043-736e-403f-8f4d-d9f301e238e3)
+![AFHQ_trace](https://github.com/user-attachments/assets/0de206fb-e29c-43fe-8315-0b19ae1707e0)
 From left to right: noise, Block 7-0, denoised image.
 
 
