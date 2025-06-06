@@ -55,7 +55,7 @@ def main(args):
     # # For Imagenet, we generate no.333 (hamster)
     # fixed_y = torch.ones((batch_size,),dtype=int, device=device) * 333
 
-    model = GS_Jacobi_sampling.Model(in_channels=channel_size, img_size=img_size, patch_size=patch_size, 
+    model = GS_Jacobi_sampling.Model(in_channels=channel_size, img_size=img_size, patch_size=patch_size,
                 channels=channels, num_blocks=blocks, layers_per_block=layers_per_block,
                 num_classes=num_classes).to(device)
     model.load_state_dict(torch.load(ckpt_file))
@@ -98,9 +98,9 @@ def main(args):
             normalized.append(img_normalized)
         return normalized
 
-    all_images = samples + [final_denoise]
+    all_images = samples + [final_denoise] # type: ignore
     all_images_normalized = normalize_per_image(all_images)
-    all_images_tensor = torch.cat(all_images_normalized, dim=0) 
+    all_images_tensor = torch.cat(all_images_normalized, dim=0)
     grid = tv.utils.make_grid(all_images_tensor, nrow=10, padding=0, normalize=False)
     save_path = sample_dir/ f"sampling_trace.png"
     tv.utils.save_image(grid, save_path)
@@ -111,6 +111,6 @@ if __name__ == '__main__':
     parser.add_argument('--cfg', default=0, type=float, help='Guidance weight for sampling, 0 is no guidance. For conditional models consider the range in [1, 3]')
     parser.add_argument('--num_GS_list',default=[0,0,0,0,0,0,0,0], type=ast.literal_eval, help='the num of GS for each flow blocks, 0 for pure iteration')
     parser.add_argument('--max_jacobi_list', default=[0,0,0,0,0,0,0,0], type=ast.literal_eval, help='the max num of iteration for each flow blocks')
-    parser.add_argument('--guess_list', default=[0,0,0,0,0,0,0,0], type=ast.literal_eval, help='initialize x with zero or z')  
+    parser.add_argument('--guess_list', default=[0,0,0,0,0,0,0,0], type=ast.literal_eval, help='initialize x with zero or z')
     args = parser.parse_args()
     main(args)

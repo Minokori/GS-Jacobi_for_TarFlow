@@ -2,8 +2,9 @@
 # For licensing see accompanying LICENSE file.
 # Copyright (C) 2024 Apple Inc. All Rights Reserved.
 #
-import torch
 import numpy as np
+import torch
+
 
 class Permutation(torch.nn.Module):
 
@@ -57,7 +58,7 @@ class Attention(torch.nn.Module):
             else:
                 k = torch.cat([torch.cat(self.k_cache[which_cache],dim=2), self.k_cache[which_cache+'_temp']],dim=2)
                 v = torch.cat([torch.cat(self.v_cache[which_cache],dim=2), self.v_cache[which_cache+'_temp']],dim=2)
-        
+
         elif self.GSJmode == 'GS':
             self.k_cache[which_cache].append(k)
             self.v_cache[which_cache].append(v)
@@ -79,7 +80,7 @@ class Attention(torch.nn.Module):
         B, T, C = x.size()
         x = self.norm(x.float()).type(x.dtype)
         q, k, v = self.qkv(x).reshape(B, T, 3 * self.num_heads, -1).chunk(3, dim=2)
-        
+
         if self.GSJmode == 'GSJ':
             self.k_cache[which_cache+'_temp'] = k
             self.v_cache[which_cache+'_temp'] = v
@@ -89,7 +90,7 @@ class Attention(torch.nn.Module):
             else:
                 k = torch.cat([torch.cat(self.k_cache[which_cache],dim=2), self.k_cache[which_cache+'_temp']],dim=1)
                 v = torch.cat([torch.cat(self.v_cache[which_cache],dim=2), self.v_cache[which_cache+'_temp']],dim=1)
-        
+
         elif self.GSJmode == 'GS':
             self.k_cache[which_cache].append(k)
             self.v_cache[which_cache].append(v)
@@ -205,7 +206,7 @@ class MetaBlock(torch.nn.Module):
             norm = self.norm
             z0 = torch.cat([x_in[:,:1],torch.zeros_like(x_in[:, 1:])], dim=1)
             IGN = []
-            for xinit in [z,z0]: 
+            for xinit in [z,z0]:
                 xinit = self.proj_in(xinit) + pos_embed
                 if self.class_embed is not None:
                     xinit = xinit + self.class_embed.mean(dim=0)
@@ -220,23 +221,23 @@ class MetaBlock(torch.nn.Module):
                 res = xadj - x_in
                 singular_value = torch.linalg.norm(res.mean(dim=0),ord=norm)
                 IGN.append(singular_value.item())
-            
+
             CRN = []
             singularsx = torch.linalg.norm((alpha * x_in).mean(dim=0),ord=norm)
             CRN.append(singularsx.item())
 
-            W = self.proj_out.weight  
-            Ws, Wu = W.chunk(2, dim=0)  
-            singulars = torch.linalg.norm(Ws,ord=norm) 
+            W = self.proj_out.weight
+            Ws, Wu = W.chunk(2, dim=0)
+            singulars = torch.linalg.norm(Ws,ord=norm)
             singularu = torch.linalg.norm(Wu,ord=norm)
-            CRN.extend([singulars.item(), singularu.item()]) 
+            CRN.extend([singulars.item(), singularu.item()])
             CRN.append(CRN[0]*CRN[1]+CRN[2])
 
             return self.permutation(z , inverse=True), -xa.mean(dim=[1, 2]), np.round(np.array(IGN),2), np.round(np.array(CRN),2)
         else:
             return self.permutation(z , inverse=True), -xa.mean(dim=[1, 2])
 
-    # function to calculate one sub_block of GS_Jacobi iteration    
+    # function to calculate one sub_block of GS_Jacobi iteration
     def reverse_substep(
         self,
         x: torch.Tensor,
@@ -253,7 +254,7 @@ class MetaBlock(torch.nn.Module):
                 x = x + self.class_embed.mean(dim=0)
 
         for block in self.attn_blocks:
-            x = block(x, jacobi_attn_mask, attn_temp=attn_temp, which_cache=which_cache)  
+            x = block(x, jacobi_attn_mask, attn_temp=attn_temp, which_cache=which_cache)
         x = self.proj_out(x)
         xa, xc = x.chunk(2, dim=-1)
 
@@ -293,7 +294,7 @@ class MetaBlock(torch.nn.Module):
         z = self.permutation(z)
         B, T, C = z.size()
         pos_embed = self.permutation(self.pos_embed, dim=0)
-        
+
         if num_GS < 1 or num_GS == T:
             mode = 'GS'
         elif num_GS == 1:
@@ -348,7 +349,7 @@ class MetaBlock(torch.nn.Module):
                     else:
                         g = guidance
                     if 'a' in guide_what:
-                        xa = xa + g * (xa - xa_u)   
+                        xa = xa + g * (xa - xa_u)
                     if 'c' in guide_what:
                         xc = xc + g * (xc - xc_u)
                 xa = torch.cat([torch.zeros_like(xa[:, :1]), xa[:, :-1]], dim=1)
@@ -381,7 +382,7 @@ class MetaBlock(torch.nn.Module):
                     z_sub = z[:,(i*jacobi_size+1):((i+1)*jacobi_size+1)]
                     pos_embed_sub = pos_embed[(i*jacobi_size):((i+1)*jacobi_size)]
                     x_curr_sub = x_next[:,(i*jacobi_size+1):((i+1)*jacobi_size+1)].clone()
-                
+
                 if incre1 and i == 0:
                     for j in range(jacobi_size):
                         x_in = x_next[:, i : i + 1]
@@ -412,9 +413,9 @@ class MetaBlock(torch.nn.Module):
                     if last:
                         x_next_sub = x_next[:,-jacobi_size:-1].clone()
                     else:
-                        x_next_sub = x_next[:,(i*jacobi_size):((i+1)*jacobi_size)].clone()                
+                        x_next_sub = x_next[:,(i*jacobi_size):((i+1)*jacobi_size)].clone()
                     x_next_sub = self.proj_in(x_next_sub) + pos_embed_sub
-                    
+
                     xa, xc = self.reverse_substep(x_next_sub,y,jacobi_attn_mask,which_cache='cond')
                     if guidance > 0 and guide_what:
                         xa_u, xc_u = self.reverse_substep(x_next_sub,None,jacobi_attn_mask,attn_temp,which_cache='uncond')
@@ -427,7 +428,7 @@ class MetaBlock(torch.nn.Module):
                         else:
                             g = guidance
                         if 'a' in guide_what:
-                            xa = xa + g * (xa - xa_u)   
+                            xa = xa + g * (xa - xa_u)
                         if 'c' in guide_what:
                             xc = xc + g * (xc - xc_u)
                     alpha = xa.float().exp().type(xa.dtype)
@@ -476,6 +477,7 @@ class Model(torch.nn.Module):
         layers_per_block: int,
         num_classes: int = 0,
         detect_mode: bool = False,
+        norm: int = 2,
     ):
         super().__init__()
         self.num_blocks = num_blocks
@@ -496,6 +498,7 @@ class Model(torch.nn.Module):
                     layers_per_block,
                     num_classes=num_classes,
                     detect_mode = self.detect_mode,
+                    norm=norm
                 )
             )
         self.blocks = torch.nn.ModuleList(blocks)
@@ -558,7 +561,7 @@ class Model(torch.nn.Module):
         show_trace: bool = False,
         X_target_list: list = None,
     ) -> torch.Tensor | list[torch.Tensor]:
-        
+
         if num_GS_list is None:
             num_GS_list = [0] * self.num_blocks
         if max_jacobi_list is None:

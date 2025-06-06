@@ -14,10 +14,10 @@ import random
 import pickle
 import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
-import seaborn as sns
+import seaborn as sns # type: ignore
 
 ####################################################################################################
-## Initialize the TarFlow model setting 
+## Initialize the TarFlow model setting
 
 # This paper contains four models
 dataset = 'imagenet'
@@ -53,12 +53,12 @@ elif dataset == 'imagenet64_patch4':
 ####################################################################################################
 ## Calculate IGN and CRN
 
-# IGN and CRN are calculated in the forward process of TarFlow, which need to pass a small batch of 
+# IGN and CRN are calculated in the forward process of TarFlow, which need to pass a small batch of
 # training set through the models
 batch_size = 1000
 # set detect_mode = True, set the norm (1,2,'fro')
 norm = 2
-model = GS_Jacobi_sampling.Model(in_channels=channel_size, img_size=img_size, patch_size=patch_size, 
+model = GS_Jacobi_sampling.Model(in_channels=channel_size, img_size=img_size, patch_size=patch_size,
               channels=channels, num_blocks=blocks, layers_per_block=layers_per_block,
              num_classes=num_classes,detect_mode=True,norm=norm).to(device)
 model.load_state_dict(torch.load(ckpt_file))
@@ -70,7 +70,7 @@ class RandomImageDataset(Dataset):
         self.root_dir = root_dir
         self.transform = transform
         self.max_samples = max_samples
-        
+
         self.all_files = self._find_image_files(root_dir)
         self.sampled_files = random.sample(self.all_files, min(max_samples, len(self.all_files)))
 
@@ -85,7 +85,7 @@ class RandomImageDataset(Dataset):
 
     def __len__(self):
         return len(self.sampled_files)
-    
+
     def __getitem__(self, idx):
         img_path = os.path.join(self.root_dir, self.sampled_files[idx])
         image = Image.open(img_path).convert('RGB')
@@ -111,7 +111,7 @@ print(f"Total images in subset: {len(dataset)}")
 data_loader = DataLoader(
     dataset,
     batch_size=batch_size,
-    shuffle=True,     
+    shuffle=True,
     num_workers=8,
     pin_memory=True,
 )
@@ -121,7 +121,7 @@ images = next(iter(data_loader))
 images = images.to(device)
 y = None
 with torch.no_grad():
-    z, outputs, logdets, IGN_list, CRN_list = model(images,y) 
+    z, outputs, logdets, IGN_list, CRN_list = model(images,y)
 
 print(IGN_list)
 print(CRN_list)
@@ -146,7 +146,7 @@ else:
 # # For Imagenet, we generate no.333 (hamster)
 # fixed_y = torch.ones((batch_size,),dtype=int, device=device) * 333
 
-model = GS_Jacobi_sampling.Model(in_channels=channel_size, img_size=img_size, patch_size=patch_size, 
+model = GS_Jacobi_sampling.Model(in_channels=channel_size, img_size=img_size, patch_size=patch_size,
               channels=channels, num_blocks=blocks, layers_per_block=layers_per_block,
              num_classes=num_classes).to(device)
 model.load_state_dict(torch.load(ckpt_file))
@@ -209,33 +209,33 @@ def normalize_per_image(images):
         normalized.append(img_normalized)
     return normalized
 
-all_images = samples + [final_denoise]
+all_images = samples + [final_denoise] # type: ignore
 all_images_normalized = normalize_per_image(all_images)
-all_images_tensor = torch.cat(all_images_normalized, dim=0) 
+all_images_tensor = torch.cat(all_images_normalized, dim=0)
 grid = tv.utils.make_grid(all_images_tensor, nrow=10, padding=0, normalize=False)
 save_path = sample_dir/ f"Img64cond_trace.png"
 tv.utils.save_image(grid, save_path)
 
 # # Original Trace
 # input_paths = [
-#     "Img128cond_trace.png",  
+#     "Img128cond_trace.png",
 #     "Img64cond_trace.png",
-#     "Img64uncond_trace.png",  
-#     "AFHQ_trace.png"   
+#     "Img64uncond_trace.png",
+#     "AFHQ_trace.png"
 # ]
 
 input_paths = [
-    "Img64cond_noIGN.png",  
-    "Img64cond_jacobi20.png",  
-    "Img64cond_jacobi30.png",  
-    "Img64cond_GSJ.png",  
+    "Img64cond_noIGN.png",
+    "Img64cond_jacobi20.png",
+    "Img64cond_jacobi30.png",
+    "Img64cond_GSJ.png",
 ]
 
 resized_images = []
 for path in input_paths:
     img = Image.open(sample_dir/ path)
-    target_height = 128  
-    target_width = 1280  
+    target_height = 128
+    target_width = 1280
     img = img.resize((target_width, target_height), Image.Resampling.LANCZOS)
     resized_images.append(img)
 
@@ -259,7 +259,7 @@ if num_classes:
 else:
     fixed_y = None
 
-model = GS_Jacobi_sampling.Model(in_channels=channel_size, img_size=img_size, patch_size=patch_size, 
+model = GS_Jacobi_sampling.Model(in_channels=channel_size, img_size=img_size, patch_size=patch_size,
               channels=channels, num_blocks=blocks, layers_per_block=layers_per_block,
              num_classes=num_classes).to(device)
 model.load_state_dict(torch.load(ckpt_file))
@@ -309,9 +309,9 @@ with open(sample_dir/'afhq_tracefull.pkl', 'rb') as f:
 
 fig = plt.figure(figsize=(16, 9))
 x = np.arange(1, 151)  # Only show the first 150 iterations
-colors = plt.cm.viridis(np.linspace(0, 0.8, 8))
-linestyles = ['-', '--', '-.', ':', '-', '--', '-.', ':'] 
-blocks = 8 
+colors = plt.cm.viridis(np.linspace(0, 0.8, 8)) # type: ignore
+linestyles = ['-', '--', '-.', ':', '-', '--', '-.', ':']
+blocks = 8
 
 titles = [
     'Img128cond',
@@ -329,24 +329,24 @@ trace_lists = [
 
 plt.rcParams['xtick.labelsize'] = 15
 plt.rcParams['ytick.labelsize'] = 15
-for idx, (trace_list, title, scale) in enumerate(zip(trace_lists, titles)):
+for idx, (trace_list, title, scale) in enumerate(zip(trace_lists, titles)): # type: ignore
     ax = plt.subplot(2, 2, idx+1)
     ax.ticklabel_format(axis='y', style='sci', scilimits=(0, 0))
     ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
 
     for i in range(blocks):
-        ax.plot(x, np.abs(np.array(trace_list[i][:150])-trace_list[i][150]), 
+        ax.plot(x, np.abs(np.array(trace_list[i][:150])-trace_list[i][150]),
                 label=f'block{7-i}',
                 color=colors[i],
                 linewidth=3.0,
                 alpha=0.8,
                 linestyle=linestyles[i])
-    
+
     ax.set_title(title, fontsize=20)
     ax.grid(True, linestyle='--', alpha=0.6)
     plt.tick_params(axis="both", which="major", labelsize=20)
     legend = ax.legend(fontsize=18, bbox_to_anchor=(1.0, 1), loc='upper right')
-    legend.get_frame().set_boxstyle("Round", pad=0.2)
+    legend.get_frame().set_boxstyle("Round", pad=0.2) # type: ignore
 
 plt.tight_layout()
 plt.savefig(sample_dir/'combined_trace_plots.png', dpi=300, bbox_inches='tight')
@@ -365,7 +365,7 @@ if num_classes:
 else:
     fixed_y = None
 
-model = GS_Jacobi_sampling.Model(in_channels=channel_size, img_size=img_size, patch_size=patch_size, 
+model = GS_Jacobi_sampling.Model(in_channels=channel_size, img_size=img_size, patch_size=patch_size,
               channels=channels, num_blocks=blocks, layers_per_block=layers_per_block,
              num_classes=num_classes).to(device)
 model.load_state_dict(torch.load(ckpt_file))
@@ -385,7 +385,7 @@ num_GS_list = [0,0,0,0,0,0,0,8]
 max_Jacobi_list = [1,1,1,1,1,1,1,32]
 guess_list = [1,0,0,0,0,1,1,1]
 
-# # # img64uncond 
+# # # img64uncond
 # # num_GS_list = [0,8,0,0,0,0,0,0]
 # # max_Jacobi_list = [1,128,1,1,1,1,1,1]
 # # guess_list = [0,1,0,0,1,0,1,1]
@@ -428,9 +428,9 @@ with open(sample_dir/'afhq_tracefull.pkl', 'rb') as f:
 trace_list_afhq = trace_list_afhq[0]
 
 fig = plt.figure(figsize=(16, 9))
-colors = plt.cm.viridis(np.linspace(0, 0.8, 8)) 
-linestyles = ['-', '--', '-.', ':', '-', '--', '-.', ':'] 
-modules = 8 
+colors = plt.cm.viridis(np.linspace(0, 0.8, 8)) # type: ignore
+linestyles = ['-', '--', '-.', ':', '-', '--', '-.', ':']
+modules = 8
 
 titles = [
     'Img128cond Block6',
@@ -454,21 +454,21 @@ for idx, (trace_list, title) in enumerate(zip(trace_lists, titles)):
     ax = plt.subplot(2, 2, idx+1)
     ax.ticklabel_format(axis='y', style='sci', scilimits=(0, 0),useMathText=True)
     ax.yaxis.set_major_locator(MaxNLocator(nbins=5))
-    
+
     for i in range(modules):
-        ax.plot(np.arange(1, len(trace_list[i])+1)[:32], (np.abs(np.array(trace_list[i])-trace_list[i][-1]))[:32]/8, 
+        ax.plot(np.arange(1, len(trace_list[i])+1)[:32], (np.abs(np.array(trace_list[i])-trace_list[i][-1]))[:32]/8,
                 label=f'modules{i+1}',
                 color=colors[i],
                 linewidth=3.0,
                 alpha=0.8,
                 linestyle=linestyles[i])
-    
+
     ax.set_title(title, fontsize=30)
     ax.grid(True, linestyle='--', alpha=0.6)
     plt.tick_params(axis="both", which="major", labelsize=20)
 
     legend = ax.legend(fontsize=18, bbox_to_anchor=(1.0, 1), loc='upper right')
-    legend.get_frame().set_boxstyle("Round", pad=0.2) 
+    legend.get_frame().set_boxstyle("Round", pad=0.2) # type: ignore
 
 plt.tight_layout()
 plt.savefig(sample_dir/'combined_GSJ_trace_plots.png', dpi=300, bbox_inches='tight')
@@ -487,7 +487,7 @@ if num_classes:
 else:
     fixed_y = None
 
-model = GS_Jacobi_sampling.Model(in_channels=channel_size, img_size=img_size, patch_size=patch_size, 
+model = GS_Jacobi_sampling.Model(in_channels=channel_size, img_size=img_size, patch_size=patch_size,
               channels=channels, num_blocks=blocks, layers_per_block=layers_per_block,
              num_classes=num_classes).to(device)
 model.load_state_dict(torch.load(ckpt_file))
@@ -526,7 +526,7 @@ for p in model.parameters():
     p.requires_grad = False
 
 lr = batch_size * img_size ** 2 * channel_size * noise_std ** 2
-x = torch.clone(samples).detach()
+x = torch.clone(samples).detach() # type: ignore
 x.requires_grad = True
 with torch.autocast(device_type=device, dtype=torch.bfloat16):
     z, outputs, logdets = model(x, fixed_y)
