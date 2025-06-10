@@ -37,6 +37,7 @@ class Attention(torch.nn.Module):
         self.proj = torch.nn.Linear(in_channels, in_channels)
         self.num_heads = in_channels // head_channels
         self.sqrt_scale = head_channels ** (-0.25)
+
         self.GSJmode = 'J'
 
         self.k_cache: dict = {'cond': [], 'uncond': [], 'cond_temp': torch.tensor([]),'uncond_temp': torch.tensor([])}
@@ -176,7 +177,14 @@ class MetaBlock(torch.nn.Module):
         self.detect_mode = detect_mode
         self.norm = norm
 
-    def forward(self, x: torch.Tensor, y: torch.Tensor | None = None) -> tuple[torch.Tensor, torch.Tensor]:
+    # NOTE 改进: detect_mode下计算IGN和CRN,并返回, 否则就正常返回output和logdet
+    def forward(self,
+                x: torch.Tensor,
+                y: torch.Tensor | None = None) -> tuple[torch.Tensor,
+                                                        torch.Tensor] | tuple[torch.Tensor,
+                                                                              torch.Tensor,
+                                                                              np.ndarray,
+                                                                              np.ndarray]:
         x = self.permutation(x)
         pos_embed = self.permutation(self.pos_embed, dim=0)
         x_in = x
@@ -201,7 +209,7 @@ class MetaBlock(torch.nn.Module):
         alpha = (-xa.float()).exp().type(xa.dtype)
         gamma = xc
         z = alpha * (x_in - gamma)
-
+        # region NOTE 在 detect_mode下计算IGN和CRN, detect_mode 相当于采样的预热模式
         if self.detect_mode:
             norm = self.norm
             z0 = torch.cat([x_in[:,:1],torch.zeros_like(x_in[:, 1:])], dim=1)
@@ -227,6 +235,7 @@ class MetaBlock(torch.nn.Module):
             CRN.append(singularsx.item())
 
             W = self.proj_out.weight
+            # NOTE 如何计算Ws, Wu
             Ws, Wu = W.chunk(2, dim=0)
             singulars = torch.linalg.norm(Ws,ord=norm)
             singularu = torch.linalg.norm(Wu,ord=norm)
@@ -234,6 +243,7 @@ class MetaBlock(torch.nn.Module):
             CRN.append(CRN[0]*CRN[1]+CRN[2])
 
             return self.permutation(z , inverse=True), -xa.mean(dim=[1, 2]), np.round(np.array(IGN),2), np.round(np.array(CRN),2)
+        # endregion
         else:
             return self.permutation(z , inverse=True), -xa.mean(dim=[1, 2])
 
@@ -260,6 +270,7 @@ class MetaBlock(torch.nn.Module):
 
         return xa, xc
 
+    # NOTE 增加: 把模式设置GSJ模式, 清空缓存
     def set_GSJmode(self, mode: str = 'GSJ'):
         for m in self.modules():
             if isinstance(m, Attention):
@@ -267,6 +278,7 @@ class MetaBlock(torch.nn.Module):
                 m.k_cache = {'cond': [], 'uncond': [], 'cond_temp': torch.tensor([]), 'uncond_temp': torch.tensor([])}
                 m.v_cache = {'cond': [], 'uncond': [], 'cond_temp': torch.tensor([]), 'uncond_temp': torch.tensor([])}
 
+    # NOTE 增加: 把临时的k和v_cache拼接到cond和uncond的cache中
     def cat_kv_temp(self,which_cache: str = 'cond'):
         for m in self.modules():
             if isinstance(m, Attention):
@@ -295,6 +307,7 @@ class MetaBlock(torch.nn.Module):
         B, T, C = z.size()
         pos_embed = self.permutation(self.pos_embed, dim=0)
 
+        # region NOTE 设置 GSJ
         if num_GS < 1 or num_GS == T:
             mode = 'GS'
         elif num_GS == 1:
@@ -302,7 +315,7 @@ class MetaBlock(torch.nn.Module):
         elif num_GS > 1:
             mode = 'GSJ'
         self.set_GSJmode(mode)
-
+        # endregion
         if num_GS < 1:
             num_GS = T
             max_jacobi = 1
@@ -501,7 +514,7 @@ class Model(torch.nn.Module):
                     norm=norm
                 )
             )
-        self.blocks = torch.nn.ModuleList(blocks)
+        self.blocks: list[MetaBlock] = torch.nn.ModuleList(blocks)  # type: ignore
 
         self.register_buffer('var', torch.ones(self.num_patches, in_channels * patch_size**2))
 
@@ -554,9 +567,9 @@ class Model(torch.nn.Module):
         attn_temp: float = 1.0,
         annealed_guidance: bool = False,
         return_sequence: bool = False,
-        num_GS_list: list = None,
-        max_jacobi_list: list = None,
-        guess_list: list = None,
+        num_GS_list: list[int] | None = None,
+        max_jacobi_list: list[int] | None = None,
+        guess_list: list[int] | None = None,
         ebound: float = 1e-6,
         show_trace: bool = False,
         X_target_list: list = None,
